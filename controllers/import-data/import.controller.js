@@ -15,7 +15,8 @@ const addData = async( request, response ) =>{
       primary_column_name:'id', 
       foreign_keys       :[
         {column_name :'f_id', references:'ert', references_column:'abc_id'}
-     ]
+     ],
+      relations          :['product_category']
     }]*/
     let metaData      = [];
     for(let i=0; i<files.length; i++){
@@ -29,6 +30,11 @@ const addData = async( request, response ) =>{
     .on('data',async(row)=>{
       s++;
       await Cypher.createAsNode(row, file_name );
+      files[i].relations= files[i].relations||[];
+      for( let r=0;r<files[i].relations.length; r++){
+          let relation_name = files[i].relations[r];
+          await createAsRelation(row,{relation_name:row[relation_name]},file_name, file_name+relation_name )
+      }
     })
     .on('end',end =>{
       metaData.push({type: 'NODE', nodes_created:s, file_name: file_name})
