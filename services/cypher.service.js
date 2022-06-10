@@ -1,6 +1,5 @@
-
 const createAsNode = async(data,label) =>{
-  const query = `MERGE (p:$label {$params}`;
+
   const attributes = Object.keys(data);
   let params  =[];
   for( let i=0; i<attributes.length; i++){
@@ -11,13 +10,15 @@ const createAsNode = async(data,label) =>{
   		params.push(attributes[i]+":"+data[attributes[i]]);
   	}
   }
-  params = {label:label, params:params.join(',')};
-  tx.run(query,params).then((data)=>{
+  params = params.join(',');
+  const query = `MERGE (p:${label} {${params}})`;
+  return tx.run(query).then((data)=>{
+    console.log(data);
   }).catch((error)=>{throw error;})
 };
 
 const createAsRelation = async(start_data, end_data,  start, end) =>{
-  const query = `MERGE (a:$start {$start_data} )-[R:$relation]->(B:$end {$end_data})`;
+
   let start_params =[];
   let end_params =[];
   const attributes = Object.keys(start_data);
@@ -39,8 +40,11 @@ const createAsRelation = async(start_data, end_data,  start, end) =>{
   	}
   } 
 
-  const params = { start: start, end: end, relation: start+end, start_data: start_params.join(','), end_data: end_params.join(',')};
-  tx.run(query, params).then((data)=>{
+   start_data =  start_params.join(',');
+   end_data =end_params.join(',');
+   const query = `MERGE (a:${start} {${start_data}} )-[R:${start+end}]->(B:${end} {${end_data}})`;
+  tx.run(query).then((data)=>{
+  console.log("here", data);
  }).catch((error)=>{throw error;})
 };
 
@@ -56,6 +60,8 @@ const getAllRelations =async(nodeLabel) =>{
     return data;
   }).catch((error)=>{throw error;})
 };
+//let p = createAsRelation({name:'S', doB:'02-04-98'},{door:20,area:"Shill nagar"}, "Person","Location");
+//Promise.resolve(p).then((d)=>console.log("wow",d)).catch(error =>console.log(error));
 
 module.exports= {
   createAsNode,

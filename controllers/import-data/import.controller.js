@@ -2,12 +2,13 @@ const constants = require("../../utils/constants.js");
 const fs	 = require("fs");
 const {parse}	 = require("fast-csv");
 const Cypher 	 = require("../../services/cypher.service.js");
-
-const addData => async( request, response ) =>{
+const path      = require("path");
+const addData = async( request, response ) =>{
   try{
     const requestData = request.body;
     const dataId      = requestData.id;
-    const nodes       = requestData.files;
+    const files       = requestData.files;
+    
     //example of files data
   /*files = [{
       table_name         : 'abc.csv', 
@@ -16,41 +17,40 @@ const addData => async( request, response ) =>{
         {column_name :'f_id', references:'ert', references_column:'abc_id'}
      ]
     }]*/
-    const relations   = requestData.relations;
     let metaData      = [];
     for(let i=0; i<files.length; i++){
-    	const file_name = nodes[i].table_name;
-    	const primaryKey = nodes[i].primary_column_name; 	    	
+    	const file_name = files[i].table_name;
+    	const primaryKey = files[i].primary_column_name; 	    	
     	let s=0;
- fs.createReadStream(path.resolve(__dirname, file_name))
+ fs.createReadStream(path.resolve(__dirname, "../../files/"+file_name+".csv"))
     .pipe(
       parse({headers: true})
     )
-    .on('data',(row)=>{
+    .on('data',async(row)=>{
       s++;
-      await Cypher.createAsNode(row, primary_column_name );
+      await Cypher.createAsNode(row, file_name );
     })
     .on('end',end =>{
       metaData.push({type: 'NODE', nodes_created:s, file_name: file_name})
     });
     	
-    
+    const foreign_keys = files[i].foreign_keys||[];
     for (let j=0; j<foreign_keys.length; j++){
-	const file_name2 = foreign_keys[i].references;
-    	const start_key = foreign_keys[i].column_name; 	
-    	const end_key  = foreign_keys[i].references_column;    	
-    	let s1=0;
-    fs.createReadStream(path.resolve(__dirname, file_name2))
-    .pipe(
-      parse({headers: true})
-    )
-    .on('data',(row)=>{
-      s1++;
-      await Cypher.createAsRelation(row, start_key , end_key);
-    })
-    .on('end',end =>{
-     metaData.push({type: 'RELATION', relations_created:s, file_name1: file_name1,file_name2: file_name2,file_name1_column:start_key, file_name2_column:end_key })
-    });
+      const file_name2 = foreign_keys[i].references;
+      const start_key = foreign_keys[i].column_name; 	
+      const end_key  = foreign_keys[i].references_column;    	
+      let s1=0;
+      fs.createReadStream(path.resolve(__dirname, "../../files/"+file_name2+".csv"))
+      .pipe(
+        parse({headers: true})
+      )
+      .on('data',async(row2)=>{
+        s1++;
+        await Cypher.createAsRelation(row,row2, file_name , end_key);
+      })
+      .on('end',end =>{
+         metaData.push({type: 'RELATION', relations_created:s, file_name1: file_name1,file_name2: file_name2,file_name1_column:start_key, file_name2_column:end_key })
+      });
     }   
     }
     return response.status(constants.CODES.SUCCESS).send({
